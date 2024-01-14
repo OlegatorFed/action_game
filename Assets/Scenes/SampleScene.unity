@@ -155,6 +155,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   MovementSpeed: 5
   JumpSpeed: 5
+  GravityForce: 9.8
   JumpsLimit: 1
 --- !u!136 &377046805
 CapsuleCollider:
