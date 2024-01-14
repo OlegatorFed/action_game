@@ -20,8 +20,9 @@ public class PlayerController : MonoBehaviour
     private byte JumpsLimit;
 
     private Vector3 prevPosition;
-    private float deltaPosition;
     private Vector3 velocityVector = Vector3.zero;
+    private Vector3 MoveCommandVector = Vector3.zero;
+    private float deltaPosition;
 
     private enum State
     {
@@ -34,9 +35,9 @@ public class PlayerController : MonoBehaviour
 
     void Move()
     {
-        float vTranslation = Input.GetAxis("Vertical") * MovementSpeed;
-        float hTranslation = Input.GetAxis("Horizontal") * MovementSpeed;
-        float fallTranslation = IsColliding() ? 0 : -GravityForce;
+        float vTranslation = IsColludingHorizontally() ? 0 : Input.GetAxis("Vertical") * MovementSpeed;
+        float hTranslation = IsColludingHorizontally() ? 0 : Input.GetAxis("Horizontal") * MovementSpeed;
+        float fallTranslation = IsCollidingVertically() ? 0 : -GravityForce;
         
 
         vTranslation *= Time.deltaTime;
@@ -64,7 +65,7 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    bool IsColliding()
+    bool IsCollidingVertically()
     {
         //gameObject.GetComponent<Collider>().bounds;
         Vector3 currentPosition = transform.position;
@@ -72,9 +73,25 @@ public class PlayerController : MonoBehaviour
 
         Ray ray = new Ray(currentPosition, Vector3.down);
         Debug.DrawRay(currentPosition, Vector3.down, Color.red);
-        //Debug.DrawRay(new Vector3(currentPosition.x, gameObject.GetComponent<Collider>().bounds.max.y, currentPosition.z), new Vector3(prevPosition.x, 0, prevPosition.z), Color.red);
+        
 
         if (Physics.Raycast(ray, out hitInfo, 1)) 
+        {
+            //Debug.Log("collided Okage");
+            return true;
+        }
+
+        return false;
+    }
+
+    bool IsColludingHorizontally()
+    {
+        Vector3 currentPosition = transform.position;
+        RaycastHit hitInfo;
+
+        Ray ray = new Ray(new Vector3(currentPosition.x, gameObject.GetComponent<Collider>().bounds.max.y, currentPosition.z), MoveCommandVector);
+
+        if (Physics.Raycast(ray , out hitInfo, 0.5f))
         {
             Debug.Log("collided Okage");
             return true;
@@ -96,21 +113,23 @@ public class PlayerController : MonoBehaviour
     private void FixedUpdate()
     {
         deltaPosition = Vector3.Distance(prevPosition, transform.position);
-
+        velocityVector = Vector3.Normalize(transform.position - prevPosition);
         prevPosition = transform.position;
-        
+
+        Move();
     }
 
     private void OnGUI()
     {
         GUILayout.BeginArea(new Rect(50f, 0, 400, Screen.height));
-        GUILayout.Label("\nDelta position: " + deltaPosition + "\nPrevious position: " + prevPosition);
+        GUILayout.Label("\nDelta position: " + deltaPosition + "\nAxis: " + MoveCommandVector);
         GUILayout.EndArea();
     }
 
     void Update()
     {
-        Move();
+        Debug.DrawRay(new Vector3(transform.position.x, gameObject.GetComponent<Collider>().bounds.max.y, transform.position.z), MoveCommandVector, Color.red);
+        MoveCommandVector = Vector3.Normalize(new Vector3(Input.GetAxis("Vertical"), 0, -Input.GetAxis("Horizontal")));
         Jump();
     }
 }
