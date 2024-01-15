@@ -24,6 +24,8 @@ public class PlayerController : MonoBehaviour
     private Vector3 MoveCommandVector = Vector3.zero;
     private float deltaPosition;
 
+    private Vector3 AxisDirection;
+
     private enum State
     {
         Grounded,
@@ -35,15 +37,15 @@ public class PlayerController : MonoBehaviour
 
     void Move()
     {
-        float vTranslation = IsColludingHorizontally() ? 0 : Input.GetAxis("Vertical") * MovementSpeed;
-        float hTranslation = IsColludingHorizontally() ? 0 : Input.GetAxis("Horizontal") * MovementSpeed;
-        float fallTranslation = IsCollidingVertically() ? 0 : -GravityForce;
-        
+        float fallTranslation = -GravityForce;
 
-        vTranslation *= Time.deltaTime;
-        hTranslation *= Time.deltaTime;
+        Vector3 movementVector = AxisDirection;
 
-        transform.Translate(vTranslation, fallTranslation * Time.deltaTime, -hTranslation);
+        movementVector = movementVector.normalized * Time.deltaTime * MovementSpeed;
+
+        transform.GetComponent<Rigidbody>().velocity = new Vector3(movementVector.x, transform.GetComponent<Rigidbody>().velocity.y, -movementVector.z);
+
+        //transform.Translate(vTranslation, fallTranslation * Time.deltaTime, -hTranslation);
     }
 
     void Jump()
@@ -115,7 +117,6 @@ public class PlayerController : MonoBehaviour
         deltaPosition = Vector3.Distance(prevPosition, transform.position);
         velocityVector = Vector3.Normalize(transform.position - prevPosition);
         prevPosition = transform.position;
-
         Move();
     }
 
@@ -128,8 +129,12 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
+        float vAxis = Input.GetAxis("Vertical");
+        float hAxis = Input.GetAxis("Horizontal");
+
+        AxisDirection = Vector3.Normalize(new Vector3(vAxis, 0, hAxis));
+
         Debug.DrawRay(new Vector3(transform.position.x, gameObject.GetComponent<Collider>().bounds.max.y, transform.position.z), MoveCommandVector, Color.red);
         MoveCommandVector = Vector3.Normalize(new Vector3(Input.GetAxis("Vertical"), 0, -Input.GetAxis("Horizontal")));
-        Jump();
     }
 }
