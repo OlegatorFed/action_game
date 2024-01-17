@@ -10,19 +10,22 @@ public class PlayerController : MonoBehaviour
     [SerializeField]
     private float JumpSpeed;
 
-    [SerializeField]
-    private float GravityForce = 1;
-
     private float JumpHeight;
     private float JumpHeightLimit = 7.5f;
     private bool Jumped = false;
     [SerializeField]
-    private byte JumpsLimit;
+    private byte JumpCounter;
 
     private Vector3 prevPosition;
     private Vector3 velocityVector = Vector3.zero;
     private Vector3 MoveCommandVector = Vector3.zero;
     private float deltaPosition;
+
+    private float verticalVelocity = 0f;
+    [SerializeField]
+    private float MaxFallSpeed = 10f;
+    [SerializeField]
+    private float FallAcceleration = 1f;
 
     private Vector3 AxisDirection;
 
@@ -35,41 +38,32 @@ public class PlayerController : MonoBehaviour
 
     private State currentState;
 
-    void Move()
+    void MovementCalculation()
     {
-        float fallTranslation = -GravityForce;
+        verticalVelocity = Mathf.Clamp(verticalVelocity - FallAcceleration, -MaxFallSpeed, JumpSpeed);
 
+        float verticalMovement = verticalVelocity;
         Vector3 movementVector = AxisDirection;
 
-        movementVector = movementVector.normalized * Time.deltaTime * MovementSpeed;
+        movementVector = movementVector.normalized * MovementSpeed;
 
-        transform.GetComponent<Rigidbody>().velocity = new Vector3(movementVector.x, transform.GetComponent<Rigidbody>().velocity.y, -movementVector.z);
+        velocityVector = new Vector3(movementVector.x, verticalMovement, -movementVector.z);
+    }
+
+    void Move()
+    {
+        transform.GetComponent<Rigidbody>().velocity = velocityVector;
 
         //transform.Translate(vTranslation, fallTranslation * Time.deltaTime, -hTranslation);
     }
 
     void Jump()
     {
-        if (Input.GetButton("Jump"))
-        {
-            Jumped = true;
-        }
-        if (Jumped && JumpHeight < JumpHeightLimit)
-        {
-            float jumpTranslation = JumpSpeed * Time.deltaTime;
-            transform.Translate(0, jumpTranslation, 0);
-            JumpHeight += jumpTranslation;
-        }
-        if (JumpHeight >= JumpHeightLimit)
-        {
-            //JumpHeight = 0;
-            currentState = State.Falling;
-        }
+        verticalVelocity = JumpSpeed;
     }
 
     bool IsCollidingVertically()
     {
-        //gameObject.GetComponent<Collider>().bounds;
         Vector3 currentPosition = transform.position;
         RaycastHit hitInfo;
 
@@ -79,7 +73,6 @@ public class PlayerController : MonoBehaviour
 
         if (Physics.Raycast(ray, out hitInfo, 1)) 
         {
-            //Debug.Log("collided Okage");
             return true;
         }
 
@@ -95,11 +88,27 @@ public class PlayerController : MonoBehaviour
 
         if (Physics.Raycast(ray , out hitInfo, 0.5f))
         {
-            Debug.Log("collided Okage");
             return true;
         }
 
         return false;
+    }
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        Debug.Log(collision.GetContact(0).point + "; " + (transform.position - GetComponent<Collider>().bounds.min));
+        if (collision.GetContact(0).point.y == transform.position.y)
+        {
+            Jumped = false;
+        }
+    }
+
+    private void OnCollisionStay(Collision collision)
+    {
+        if (GetComponent<Rigidbody>().velocity.y == 0)
+        {
+            //Jumped = false;
+        }
     }
 
     private void Awake()
@@ -109,32 +118,44 @@ public class PlayerController : MonoBehaviour
 
     void Start()
     {
-        
+
+    }
+    private void OnGUI()
+    {
+        GUILayout.BeginArea(new Rect(50f, 0, 400, Screen.height));
+        GUILayout.Label("\nDelta position: " + deltaPosition + "\nAxis: " + MoveCommandVector + "\nJumped: " + Jumped + "\nVelocity: " + velocityVector + "\n" + transform.GetComponent<Rigidbody>().velocity);
+        GUILayout.EndArea();
     }
 
     private void FixedUpdate()
     {
         deltaPosition = Vector3.Distance(prevPosition, transform.position);
-        velocityVector = Vector3.Normalize(transform.position - prevPosition);
+        //velocityVector = Vector3.Normalize(transform.position - prevPosition);
+        //velocityVector = new Vector3(velocityVector.x, 0, velocityVector.z);
         prevPosition = transform.position;
         Move();
-    }
-
-    private void OnGUI()
-    {
-        GUILayout.BeginArea(new Rect(50f, 0, 400, Screen.height));
-        GUILayout.Label("\nDelta position: " + deltaPosition + "\nAxis: " + MoveCommandVector);
-        GUILayout.EndArea();
     }
 
     void Update()
     {
         float vAxis = Input.GetAxis("Vertical");
         float hAxis = Input.GetAxis("Horizontal");
+        bool jumpInput = Input.GetButtonDown("Jump");
 
         AxisDirection = Vector3.Normalize(new Vector3(vAxis, 0, hAxis));
 
+        if (jumpInput && !Jumped)
+        {
+            Jump();
+            Jumped = true;
+        }
+
+        MovementCalculation();
+
         Debug.DrawRay(new Vector3(transform.position.x, gameObject.GetComponent<Collider>().bounds.max.y, transform.position.z), MoveCommandVector, Color.red);
         MoveCommandVector = Vector3.Normalize(new Vector3(Input.GetAxis("Vertical"), 0, -Input.GetAxis("Horizontal")));
+        Vector3 newDirection = Vector3.RotateTowards(transform.forward, MoveCommandVector, .05f, 0.0f);
+
+        transform.rotation = Quaternion.LookRotation(newDirection);
     }
 }
