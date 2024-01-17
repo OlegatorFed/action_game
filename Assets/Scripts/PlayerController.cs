@@ -29,6 +29,8 @@ public class PlayerController : MonoBehaviour
 
     private Vector3 AxisDirection;
 
+    private Animator animator;
+
     private enum State
     {
         Grounded,
@@ -118,7 +120,7 @@ public class PlayerController : MonoBehaviour
 
     void Start()
     {
-
+        animator = GetComponent<Animator>();
     }
     private void OnGUI()
     {
@@ -151,6 +153,15 @@ public class PlayerController : MonoBehaviour
         }
 
         MovementCalculation();
+
+        if (velocityVector.x != 0 || velocityVector.z != 0)
+        {
+            animator.SetBool("isWalking", true);
+        }
+        else
+        {
+            animator.SetBool("isWalking", false);
+        }
 
         Debug.DrawRay(new Vector3(transform.position.x, gameObject.GetComponent<Collider>().bounds.max.y, transform.position.z), MoveCommandVector, Color.red);
         MoveCommandVector = Vector3.Normalize(new Vector3(Input.GetAxis("Vertical"), 0, -Input.GetAxis("Horizontal")));
